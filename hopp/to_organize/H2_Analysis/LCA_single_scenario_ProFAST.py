@@ -21,6 +21,7 @@ def hydrogen_LCA_singlescenario_ProFAST(grid_connection_scenario,atb_year,site_n
 
     dircambium = os.path.join(hopp_dict.main_dict["Configuration"]["parent_path"], "H2_Analysis", "Cambium_data", "Cambium22_MidCase100by2035_hourly_")
 
+    dirgreet = os.path.join(hopp_dict.main_dict["Configuration"]["parent_path"], "H2_Analysis","greet_emission_intensities.csv")
     #==============================================================================
     # DATA
     #==============================================================================
@@ -45,6 +46,11 @@ def hydrogen_LCA_singlescenario_ProFAST(grid_connection_scenario,atb_year,site_n
         battery_EI = 20             # Electricity generation capacity from battery (g CO2e/kWh)
     else:
         battery_EI = 0  # Electricity generation capacity from battery (g CO2e/kWh)
+
+    # Emission factors
+    greet_ei = pd.read_csv(dirgreet,index_col = None,header=0)
+    emitting_technologies = greet_ei.loc[:,'Technology'].tolist()
+    greet_ei = greet_ei.set_index('Technology')
 
     #------------------------------------------------------------------------------
     # Hydrogen production via water electrolysis
@@ -73,19 +79,47 @@ def hydrogen_LCA_singlescenario_ProFAST(grid_connection_scenario,atb_year,site_n
     years = list(range(cambium_year,2055,5))
     for year in years:
         cambiumdata_filepath = dircambium + site_name + '_'+str(year) + '.csv'
-        cambium_data = pd.read_csv(cambiumdata_filepath,index_col = None,header = 5,usecols = ['lrmer_co2_c','lrmer_ch4_c','lrmer_n2o_c','lrmer_co2_p','lrmer_ch4_p','lrmer_n2o_p','lrmer_co2e_c','lrmer_co2e_p','lrmer_co2e'])
+        # cambium_data = pd.read_csv(cambiumdata_filepath,index_col = None,header = 5,usecols = ['lrmer_co2_c','lrmer_ch4_c','lrmer_n2o_c','lrmer_co2_p','lrmer_ch4_p','lrmer_n2o_p','lrmer_co2e_c','lrmer_co2e_p','lrmer_co2e',\
+        #                                                                                         'generation','nuclear_MWh','coal_MWh','coal-ccs_MWh','o-g-s_MWh','gas-cc_MWh','gas-cc-ccs_MWh','gas-ct_MWh','hydro_MWh','geothermal_MWh',\
+        #                                                                                         'biomass_MWh','beccs_MWh','wind-ons_MWh','wind-ofs_MWh','csp_MWh','upv_MWh','distpv_MWh','phs_MWh','battery_MWh','canada_MWh'])
 
-        cambium_data = cambium_data.reset_index().rename(columns = {'index':'Interval','lrmer_co2_c':'LRMER CO2 combustion (kg-CO2/MWh)','lrmer_ch4_c':'LRMER CH4 combustion (g-CH4/MWh)','lrmer_n2o_c':'LRMER N2O combustion (g-N2O/MWh)',\
-                                                    'lrmer_co2_p':'LRMER CO2 production (kg-CO2/MWh)','lrmer_ch4_p':'LRMER CH4 production (g-CH4/MWh)','lrmer_n2o_p':'LRMER N2O production (g-N2O/MWh)','lrmer_co2e_c':'LRMER CO2 equiv. combustion (kg-CO2e/MWh)',\
-                                                    'lrmer_co2e_p':'LRMER CO2 equiv. production (kg-CO2e/MWh)','lrmer_co2e':'LRMER CO2 equiv. total (kg-CO2e/MWh)'})
+        # cambium_data = cambium_data.reset_index().rename(columns = {'index':'Interval','lrmer_co2_c':'LRMER CO2 combustion (kg-CO2/MWh)','lrmer_ch4_c':'LRMER CH4 combustion (g-CH4/MWh)','lrmer_n2o_c':'LRMER N2O combustion (g-N2O/MWh)',\
+        #                                             'lrmer_co2_p':'LRMER CO2 production (kg-CO2/MWh)','lrmer_ch4_p':'LRMER CH4 production (g-CH4/MWh)','lrmer_n2o_p':'LRMER N2O production (g-N2O/MWh)','lrmer_co2e_c':'LRMER CO2 equiv. combustion (kg-CO2e/MWh)',\
+        #                                             'lrmer_co2e_p':'LRMER CO2 equiv. production (kg-CO2e/MWh)','lrmer_co2e':'LRMER CO2 equiv. total (kg-CO2e/MWh)'})
+
+        cambium_data = pd.read_csv(cambiumdata_filepath,index_col = None,header = 5,usecols = ['aer_gen_co2e','aer_load_co2e','lrmer_co2e',\
+                                                                                                'generation','nuclear_MWh','coal_MWh','coal-ccs_MWh','o-g-s_MWh','gas-cc_MWh','gas-cc-ccs_MWh','gas-ct_MWh','hydro_MWh','geothermal_MWh',\
+                                                                                                'biomass_MWh','beccs_MWh','wind-ons_MWh','wind-ofs_MWh','csp_MWh','upv_MWh','distpv_MWh','phs_MWh','battery_MWh','canada_MWh'])
+
+        cambium_data = cambium_data.reset_index().rename(columns = {'index':'Interval'})
 
         cambium_data['Interval']=cambium_data['Interval']+1
         cambium_data = cambium_data.set_index('Interval')
 
+        # Calculate precombustion and combustion emissions using GREET assumptions
+        cambium_data['total precombustion emissions (kg-CO2)'] = 0*cambium_data['generation']
+        cambium_data['total combustion emissions (kg-CO2)'] = 0*cambium_data['generation']
+        for fossil_technology in emitting_technologies:
+            cambium_data['total precombustion emissions (kg-CO2)'] = cambium_data['total precombustion emissions (kg-CO2)']+greet_ei.loc[fossil_technology,'Pre-combustion (kg CO2e/MWh)']*cambium_data[fossil_technology+'_MWh']
+            cambium_data['total combustion emissions (kg-CO2)'] = cambium_data['total combustion emissions (kg-CO2)']+greet_ei.loc[fossil_technology,'Combustion (kg CO2e/MWh)']*cambium_data[fossil_technology+'_MWh']
+
+        cambium_data['total average precombustion emissions (kg-CO2/MWhe)'] = cambium_data['total precombustion emissions (kg-CO2)']/cambium_data['generation']
+        cambium_data['total average combustion emissions (kg-CO2/MWhe)'] = cambium_data['total combustion emissions (kg-CO2)']/cambium_data['generation']
+        cambium_data['total average grid emissions (kg-CO2/MWhe)'] = (cambium_data['total average precombustion emissions (kg-CO2/MWhe)']+cambium_data['total average combustion emissions (kg-CO2/MWhe)'])
+
+        # Compare to cambium
+        cambium_data['greet-cambium average emission difference (kg-CO2/MWhe)'] = cambium_data['total average grid emissions (kg-CO2/MWhe)'] -cambium_data['aer_gen_co2e']
+        cambium_data['greet-cambium average emission difference (%)'] = (cambium_data['total average grid emissions (kg-CO2/MWhe)'] -cambium_data['aer_gen_co2e'])/cambium_data['aer_gen_co2e']*100
+
         # Calculate hourly grid emissions factors of interest. If we want to use different GWPs, we can do that here. The Grid Import is an hourly data i.e., in MWh
-        cambium_data['Total grid emissions (kg-CO2e)'] = energy_from_grid_df['Energy from the grid (kWh)'] * cambium_data['LRMER CO2 equiv. total (kg-CO2e/MWh)'] / 1000
-        cambium_data['Scope 2 (combustion) grid emissions (kg-CO2e)'] = energy_from_grid_df['Energy from the grid (kWh)']  * cambium_data['LRMER CO2 equiv. combustion (kg-CO2e/MWh)'] / 1000
-        cambium_data['Scope 3 (production) grid emissions (kg-CO2e)'] = energy_from_grid_df['Energy from the grid (kWh)']  * cambium_data['LRMER CO2 equiv. production (kg-CO2e/MWh)'] / 1000
+        # cambium_data['Total grid emissions (kg-CO2e)'] = energy_from_grid_df['Energy from the grid (kWh)'] * cambium_data['LRMER CO2 equiv. total (kg-CO2e/MWh)'] / 1000
+        # cambium_data['Scope 2 (combustion) grid emissions (kg-CO2e)'] = energy_from_grid_df['Energy from the grid (kWh)']  * cambium_data['LRMER CO2 equiv. combustion (kg-CO2e/MWh)'] / 1000
+        # cambium_data['Scope 3 (production) grid emissions (kg-CO2e)'] = energy_from_grid_df['Energy from the grid (kWh)']  * cambium_data['LRMER CO2 equiv. production (kg-CO2e/MWh)'] / 1000
+
+        # Calculate hourly grid emissions factors of interestusing GREET assumptions. The Grid Import is an hourly data i.e., in MWh
+        cambium_data['Total grid emissions (kg-CO2e)'] = energy_from_grid_df['Energy from the grid (kWh)'] * cambium_data['total average grid emissions (kg-CO2/MWhe)'] / 1000
+        cambium_data['Scope 2 (combustion) grid emissions (kg-CO2e)'] = energy_from_grid_df['Energy from the grid (kWh)']  * cambium_data['total average combustion emissions (kg-CO2/MWhe)'] / 1000
+        cambium_data['Scope 3 (production) grid emissions (kg-CO2e)'] = energy_from_grid_df['Energy from the grid (kWh)']  * cambium_data['total average precombustion emissions (kg-CO2/MWhe)']/ 1000
 
         # Sum total emissions
         scope2_grid_emissions_sum = cambium_data['Scope 2 (combustion) grid emissions (kg-CO2e)'].sum()*kg_to_MT_conv
