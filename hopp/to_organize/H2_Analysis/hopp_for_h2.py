@@ -112,7 +112,7 @@ def hopp_for_h2(site, scenario, technologies, wind_size_mw, solar_size_mw, stora
         hybrid_plant.wind._financial_model.value("debt_option", 0)
         hybrid_plant.wind._financial_model.FinancialParameters.debt_percent = scenario['Debt Equity']
         hybrid_plant.wind._financial_model.value("debt_option", 0)
-        print(scenario.keys())
+        #print(scenario.keys())
         ptc_val = scenario['Wind PTC']# hybrid_plant.wind.om_capacity =
         hybrid_plant.wind._financial_model.FinancialParameters.debt_percent = scenario['Debt Equity']
         hybrid_plant.wind._financial_model.value("debt_option", 0)
