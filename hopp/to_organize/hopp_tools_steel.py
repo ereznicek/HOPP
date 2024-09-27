@@ -7,11 +7,11 @@ import os
 import matplotlib.pyplot as plt
 import yaml
 import re
-from yamlinclude import YamlIncludeConstructor
+#from yamlinclude import YamlIncludeConstructor
 from pathlib import Path
 
 PATH = Path(__file__).parent
-YamlIncludeConstructor.add_to_loader_class(loader_class=yaml.FullLoader, base_dir=PATH / 'floris_input_files/')
+#YamlIncludeConstructor.add_to_loader_class(loader_class=yaml.FullLoader, base_dir=PATH / 'floris_input_files/')
 
 
 # HOPP functionss
