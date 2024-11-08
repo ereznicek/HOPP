@@ -60,8 +60,8 @@ def hydrogen_LCA_singlescenario_ProFAST(grid_connection_scenario,atb_year,site_n
     fuel_to_grid_curr   = 48   # Fuel mix emission intensity for current power grid (g CO2e/kWh)
     fuel_to_grid_futu   = 14   # Fuel mix emission intensity for future power grid (g CO2e/kWh)
 
-    if atb_year == 2020:
-        cambium_year = 2025
+    if atb_year == 2022:
+        cambium_year = 2030
     elif atb_year == 2025:
         cambium_year = 2030
     elif atb_year == 2030:

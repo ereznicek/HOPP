@@ -1986,8 +1986,8 @@ def steel_LCOS(
     natural_gas_cost = 4                        # $/MMBTU
 
      # Specify grid cost year for ATB year
-    if atb_year == 2020:
-        grid_year = 2025
+    if atb_year == 2022:
+        grid_year = 2030
     elif atb_year == 2025:
         grid_year = 2030
     elif atb_year == 2030:

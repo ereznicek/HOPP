@@ -96,6 +96,18 @@ def hopp_for_h2(site, scenario, technologies, wind_size_mw, solar_size_mw, stora
         hybrid_plant.pv._financial_model.FinancialParameters.analysis_period = scenario['Useful Life']
         hybrid_plant.pv._financial_model.FinancialParameters.debt_percent = scenario['Debt Equity']
         hybrid_plant.pv.system_capacity_kw = solar_size_mw * 1000
+
+        if site.lat<=25:
+            tilt = site.lat*0.87
+        elif site.lat>25 and site.lat<=50:
+            tilt = (site.lat*0.76) + 3.1
+        else:
+            tilt = site.lat
+        hybrid_plant.pv._system_model.SystemDesign.assign({"tilt":tilt})
+
+
+        dc_ac_ratio = 1.34
+        hybrid_plant.pv._system_model.SystemDesign.assign({"dc_ac_ratio":dc_ac_ratio})
         # if scenario['ITC Available']:
         #     hybrid_plant.pv._financial_model.TaxCreditIncentives.itc_fed_percent = 26
         # else:
@@ -153,7 +165,10 @@ def hopp_for_h2(site, scenario, technologies, wind_size_mw, solar_size_mw, stora
     hybrid_plant.simulate(scenario['Useful Life'])
 
     # HOPP Specific Energy Metrics
-    combined_pv_wind_power_production_hopp = hybrid_plant.grid._system_model.Outputs.system_pre_interconnect_kwac[0:8760]
+    if 'wind' in technologies or 'solar' in technologies:
+        combined_pv_wind_power_production_hopp = hybrid_plant.grid._system_model.Outputs.system_pre_interconnect_kwac[0:8760]
+    else:
+        combined_pv_wind_power_production_hopp = tuple(np.zeros(8760))
     energy_shortfall_hopp = [x - y for x, y in
                              zip(load,combined_pv_wind_power_production_hopp)]
     energy_shortfall_hopp = [x if x > 0 else 0 for x in energy_shortfall_hopp]
